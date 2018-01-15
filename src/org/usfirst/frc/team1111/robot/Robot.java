@@ -80,6 +80,9 @@ public class Robot extends IterativeRobot {
 			case chooseTalonAbs:
 				driveDist(5);
 				break;
+			case chooseTalonRel:
+				driveDist(5);
+				break;
 		}
 	}
 	
