@@ -8,11 +8,13 @@ import edu.wpi.first.wpilibj.IterativeRobot;
 import edu.wpi.first.wpilibj.SerialPort;
 import edu.wpi.first.wpilibj.smartdashboard.SendableChooser;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
+import edu.wpi.first.wpilibj.SPI;
 
 public class Robot extends IterativeRobot {
 	static final String chooseNavx = "NavX";
 	static final String chooseTalonAbs = "Talon-Absolute";
 	static final String chooseTalonRel = "Talon-Relative";
+	static final String chooseTalonAMT = "Talon-AMT";
 	String selected;
 	SendableChooser<String> chooser = new SendableChooser<>();
 	
@@ -24,30 +26,32 @@ public class Robot extends IterativeRobot {
 	double iT = 0;
 	double dT = 0;
 	
-	AHRS navx = new AHRS(SerialPort.Port.kMXP);
+	AHRS navx = new AHRS(SPI.Port.kMXP);
 	MiniPID pid = new MiniPID(pN, iN, dN);
 	double speed;
 
-	TalonSRX motor = new TalonSRX(1111); //TODO: configure with proper motor port
+	TalonSRX motor = new TalonSRX(48); //TODO: configure with proper motor port
 	FeedbackDevice encoderAbsolute = FeedbackDevice.CTRE_MagEncoder_Absolute;
 	FeedbackDevice encoderRelative = FeedbackDevice.CTRE_MagEncoder_Relative;
-	int encoderPPR_ABS = 1024;
+	FeedbackDevice encoderAMT = FeedbackDevice.QuadEncoder;
+	int encoderPPR_ABS = 2048;
 	int encoderDRP_ABS = calcDPR(encoderPPR_ABS);
 	int encoderPPR_REL = 1; //TODO: Figure out
 	int encoderDRP_REL = calcDPR(encoderPPR_ABS);
 	int feedbackDelay = 200;
 	
-	TalonSRX frontLeft = new TalonSRX(1111); //TODO: configure with proper motor port
-	TalonSRX frontRight = new TalonSRX(1111); //TODO: configure with proper motor port
-	TalonSRX backLeft = new TalonSRX(1111); //TODO: configure with proper motor port
-	TalonSRX backRight = new TalonSRX(1111); //TODO: configure with proper motor port
+	TalonSRX frontLeft = new TalonSRX(43); //TODO: configure with proper motor port
+	TalonSRX frontRight = new TalonSRX(48); //TODO: configure with proper motor port
+	TalonSRX backLeft = new TalonSRX(7); //TODO: configure with proper motor port
+	TalonSRX backRight = new TalonSRX(54); //TODO: configure with proper motor port
 
 	
 	@Override
 	public void robotInit() {
-		chooser.addObject("NavX", chooseNavx);
+		chooser.addDefault("NavX", chooseNavx);
 		chooser.addObject("Talon-Absolute",chooseTalonAbs);
 		chooser.addObject("Talon-Relative",chooseTalonRel);
+		chooser.addObject("Talon-AMT",chooseTalonAMT);
 		SmartDashboard.putData(chooser);
 		SmartDashboard.putNumber("NavX-P", pN); SmartDashboard.putNumber("NavX-I", iN); SmartDashboard.putNumber("NavX-D", dN);
 		SmartDashboard.putNumber("Talon-P", pT); SmartDashboard.putNumber("Talon-I", iT); SmartDashboard.putNumber("Talon-D", dT);
@@ -66,8 +70,11 @@ public class Robot extends IterativeRobot {
 			case chooseTalonRel:
 				motor.configSelectedFeedbackSensor(encoderRelative, 0, feedbackDelay);
 				break;
+			case chooseTalonAMT:
+				motor.configSelectedFeedbackSensor(encoderAMT, 0, feedbackDelay);
 		}
 		
+		navx.reset();
 		configureControl();
 	}
 
@@ -75,7 +82,7 @@ public class Robot extends IterativeRobot {
 	public void autonomousPeriodic() {
 		switch (selected) {
 			case chooseNavx:
-				turnTo(90);
+				turnTo(-90);
 				break;
 			case chooseTalonAbs:
 				driveDist(5);
@@ -83,8 +90,15 @@ public class Robot extends IterativeRobot {
 			case chooseTalonRel:
 				driveDist(5);
 				break;
+			case chooseTalonAMT:
+				driveDist(5);
+				break;
 		}
 	}
+	
+	
+	//=====BEGIN UTILITY CODE=====
+	
 	
 	private void updateValues() {
 		switch (selected) {
@@ -107,22 +121,27 @@ public class Robot extends IterativeRobot {
 		motor.config_kP(0, pT, feedbackDelay); motor.config_kI(0, iT, feedbackDelay); motor.config_kD(0, dT, feedbackDelay); //Sets Talon PID values
 	}
 	
+	
+	//=====BEGIN NAVX CODE=====
+	
+	
 	private void turnTo(double desAngle) {
 		//TODO: Determine if deadzone needs to be set
-		float curAngle = navx.getCompassHeading();
+		double curAngle = navx.getAngle();
+		System.out.println("Current Angle:" + curAngle);
 		
 		pid.setSetpoint(desAngle);
 		speed = pid.getOutput(curAngle);
+		System.out.println("Current Speed:" + speed);
+		System.out.println();
 		
-		if (Math.abs(curAngle-desAngle) >= 180) { //Checks if robot needs to turn to the left
-			drive(speed);
-//			drive(-speed, speed); //Use this function for testing on actual robot
-		}
-		else {
-			drive(-speed);
-//			drive(speed, -speed); //Use this function for testing on actual robot
-		}
+//		drive(speed);
+		drive(speed, -speed);
 	}
+	
+	
+	//=====BEGIN TALON SRX CODE======
+	
 	
 	private void drive(double value) {
 		value *= 1; //Sets soft limit for speed
