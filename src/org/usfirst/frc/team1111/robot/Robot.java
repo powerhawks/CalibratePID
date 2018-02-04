@@ -12,9 +12,9 @@ import edu.wpi.first.wpilibj.SPI;
 
 public class Robot extends IterativeRobot {
 	//Default values. These do not change when you re-deploy so when calibrating PID, use SmartDashboard, do not edit these variables.
-	double p = 0.01;
-	double i = 0;
-	double d = 0;
+	double p = 0.0175;
+	double i = 0.0000001;
+	double d = 0.1125;
 	AHRS navx = new AHRS(SPI.Port.kMXP);
 	MiniPID pid = new MiniPID(p, i, d);
 	double speed;
